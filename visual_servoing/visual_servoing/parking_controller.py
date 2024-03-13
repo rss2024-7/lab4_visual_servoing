@@ -29,6 +29,9 @@ class ParkingController(Node):
         self.relative_x = 0
         self.relative_y = 0
 
+        self.previous_distance = None
+        self.previous_angle = None
+
         self.get_logger().info("Parking Controller Initialized")
 
     def relative_cone_callback(self, msg):
@@ -37,12 +40,52 @@ class ParkingController(Node):
         drive_cmd = AckermannDriveStamped()
 
         #################################
+        steering_angle = 0.0
+        velocity = 0.0
+
+        current_angle = np.arctan(self.relative_y/self.relative_x)
+        self.get_logger().info('Angle: ' + str(current_angle))
+        current_distance = np.sqrt((self.relative_x)**2+(self.relative_x)**2)
+        distance_error = current_distance - self.parking_distance
+        flip_controls = -1 if self.relative_x < 0 else 1
+
+        K_p = 1
+        K_i = 0
+        K_d = 0
 
         # YOUR CODE HERE
         # Use relative position and your control law to set drive_cmd
+        # if distance_error < 0 and current_angle < 0.1:
+        #     steering_angle = 0.0
+        #     velocity = -1.0
+        if abs(current_angle) > 0.8:
+            self.get_logger().info('Case 1')
+            if self.relative_y < 0: 
+                steering_angle = 0.2
+            else:
+                steering_angle = -0.2
+            velocity = -0.5
+        elif steering_angle < 0.05 and abs(distance_error) < 0.05 and self.relative_x > 0:
+            self.get_logger().info('Case 2')
+            steering_angle = 0.0
+            velocity = 0.0
+        elif self.relative_x < self.parking_distance and abs(current_angle) < 0.1 and abs(distance_error) < 1.0:
+            self.get_logger().info('Case 3')
+            steering_angle = 0.0
+            velocity = self.relative_x
+        # elif abs(self.relative_x) < 0.5 and abs(current_angle) < 0.1:
+        #     steering_angle = -0.1
+        #     velocity = -0.5
+        else:
+            self.get_logger().info('Case 4')
+            steering_angle = flip_controls * K_p * (current_angle)
+            velocity = flip_controls * (2.0 * steering_angle + current_distance * 0.25)
+
 
         #################################
-
+        drive_cmd.drive.steering_angle = min(0.34, steering_angle) if steering_angle > 0 else max(-0.34, steering_angle)
+        drive_cmd.drive.speed = min(1.0, velocity) if velocity < 0 else max(-1.0, velocity)
+        # drive_cmd.drive.speed = self.VELOCITY
         self.drive_pub.publish(drive_cmd)
         self.error_publisher()
 
@@ -57,6 +100,7 @@ class ParkingController(Node):
 
         # YOUR CODE HERE
         # Populate error_msg with relative_x, relative_y, sqrt(x^2+y^2)
+
 
         #################################
         
