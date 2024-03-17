@@ -31,6 +31,10 @@ class ParkingController(Node):
 
         self.previous_distance = None
         self.previous_angle = None
+        self.current_distance_from_cone = None
+        self.current_angle = None
+
+        self.drive_mode = "forward"
 
         self.get_logger().info("Parking Controller Initialized")
 
@@ -44,9 +48,11 @@ class ParkingController(Node):
         velocity = 0.0
 
         current_angle = np.arctan(self.relative_y/self.relative_x)
-        self.get_logger().info('Angle: ' + str(current_angle))
-        current_distance = np.sqrt((self.relative_x)**2+(self.relative_x)**2)
-        distance_error = current_distance - self.parking_distance
+        self.current_angle = current_angle
+        # self.get_logger().info('Angle: ' + str(current_angle))
+        current_distance_from_cone = np.sqrt((self.relative_x)**2+(self.relative_x)**2)
+        self.current_distance_from_cone = current_distance_from_cone
+        current_distance_error = current_distance_from_cone - self.parking_distance
         flip_controls = -1 if self.relative_x < 0 else 1
 
         K_p = 1
@@ -56,26 +62,46 @@ class ParkingController(Node):
         # YOUR CODE HERE
         # Use relative position and your control law to set drive_cmd
         # also probably need to check self.relative_y
-        if current_distance < 1.0:
-            distance_error = self.relative_x - self.parking_distance
-            if abs(current_angle) > 0.0005:
-                if distance_error > 0 and distance_error < 0.0005:
-                    velocity = 0
-                else:
-                    velocity = 0.25 * distance_error
+        
+        if self.relative_x < 0 or current_distance_error < 0:
+            self.get_logger().info('A')
+            self.drive_mode = "backing"
+
+        if self.drive_mode == "backing":
+            if self.relative_x < self.parking_distance:
+                self.get_logger().info('B')
+                velocity = min(-0.5, -abs(current_distance_from_cone))
             else:
-                velocity = -0.5 * distance_error
-        elif abs(current_angle) < 0.0005: # car is lined up
-            distance_error = self.relative_x - self.parking_distance
-            if abs(distance_error) > 0.005:
-                velocity = 0.5 * distance_error
-            else:
-                velocity = 0.0
-        else:
+                self.get_logger().info('C')
+                self.drive_mode = "forward"
+        
+        if self.drive_mode == "forward":
+            self.get_logger().info('D')
             steering_angle = flip_controls * K_p * (current_angle)
             steering_angle = min(0.34, steering_angle) if steering_angle > 0 else max(-0.34, steering_angle)
+            velocity = flip_controls * (0.5 * abs(steering_angle) + current_distance_error * 0.25)
 
-            velocity = flip_controls * (1.0 * abs(steering_angle) + current_distance * 0.25)
+
+        # if current_distance_from_cone < 1.0:
+        #     distance_error = self.relative_x - self.parking_distance
+        #     if abs(current_angle) > 0.0005:
+        #         if distance_error > 0 and distance_error < 0.0005:
+        #             velocity = 0
+        #         else:
+        #             velocity = 0.25 * distance_error
+        #     else:
+        #         velocity = -0.5 * distance_error
+        # elif abs(current_angle) < 0.0005: # car is lined up
+        #     distance_error = self.relative_x - self.parking_distance
+        #     if abs(distance_error) > 0.005:
+        #         velocity = 0.5 * distance_error
+        #     else:
+        #         velocity = 0.0
+        # else:
+        #     steering_angle = flip_controls * K_p * (current_angle)
+        #     steering_angle = min(0.34, steering_angle) if steering_angle > 0 else max(-0.34, steering_angle)
+
+        #     velocity = flip_controls * (1.0 * abs(steering_angle) + current_distance_from_cone * 0.25)
         
 
 
@@ -99,8 +125,11 @@ class ParkingController(Node):
 
         # YOUR CODE HERE
         # Populate error_msg with relative_x, relative_y, sqrt(x^2+y^2)
-
-
+        error_msg.x_error = (self.current_distance_from_cone - self.parking_distance) * np.cos(self.current_angle)
+        error_msg.y_error = (self.current_distance_from_cone - self.parking_distance) * np.sin(self.current_angle)
+        # error_msg.x_error = self.relative_x
+        # error_msg.y_error = self.relative_y
+        error_msg.distance_error = np.sqrt(error_msg.x_error** 2 + error_msg.y_error ** 2)
         #################################
         
         self.error_pub.publish(error_msg)
