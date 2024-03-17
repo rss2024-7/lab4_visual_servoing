@@ -25,7 +25,7 @@ class ParkingController(Node):
         self.create_subscription(ConeLocation, "/relative_cone", 
             self.relative_cone_callback, 1)
 
-        self.parking_distance = .75 # meters; try playing with this number!
+        self.parking_distance = 1.5 # meters; try playing with this number!
         self.relative_x = 0
         self.relative_y = 0
 
@@ -55,37 +55,36 @@ class ParkingController(Node):
 
         # YOUR CODE HERE
         # Use relative position and your control law to set drive_cmd
-        # if distance_error < 0 and current_angle < 0.1:
-        #     steering_angle = 0.0
-        #     velocity = -1.0
-        if abs(current_angle) > 0.8:
-            self.get_logger().info('Case 1')
-            if self.relative_y < 0: 
-                steering_angle = 0.2
+        # also probably need to check self.relative_y
+        if current_distance < 1.0:
+            distance_error = self.relative_x - self.parking_distance
+            if abs(current_angle) > 0.0005:
+                if distance_error > 0 and distance_error < 0.0005:
+                    velocity = 0
+                else:
+                    velocity = 0.25 * distance_error
             else:
-                steering_angle = -0.2
-            velocity = -0.5
-        elif steering_angle < 0.05 and abs(distance_error) < 0.05 and self.relative_x > 0:
-            self.get_logger().info('Case 2')
-            steering_angle = 0.0
-            velocity = 0.0
-        elif self.relative_x < self.parking_distance and abs(current_angle) < 0.1 and abs(distance_error) < 1.0:
-            self.get_logger().info('Case 3')
-            steering_angle = 0.0
-            velocity = self.relative_x
-        # elif abs(self.relative_x) < 0.5 and abs(current_angle) < 0.1:
-        #     steering_angle = -0.1
-        #     velocity = -0.5
+                velocity = -0.5 * distance_error
+        elif abs(current_angle) < 0.0005: # car is lined up
+            distance_error = self.relative_x - self.parking_distance
+            if abs(distance_error) > 0.005:
+                velocity = 0.5 * distance_error
+            else:
+                velocity = 0.0
         else:
-            self.get_logger().info('Case 4')
             steering_angle = flip_controls * K_p * (current_angle)
-            velocity = flip_controls * (2.0 * steering_angle + current_distance * 0.25)
+            steering_angle = min(0.34, steering_angle) if steering_angle > 0 else max(-0.34, steering_angle)
+
+            velocity = flip_controls * (1.0 * abs(steering_angle) + current_distance * 0.25)
+        
+
+
+
 
 
         #################################
         drive_cmd.drive.steering_angle = min(0.34, steering_angle) if steering_angle > 0 else max(-0.34, steering_angle)
         drive_cmd.drive.speed = min(1.0, velocity) if velocity < 0 else max(-1.0, velocity)
-        # drive_cmd.drive.speed = self.VELOCITY
         self.drive_pub.publish(drive_cmd)
         self.error_publisher()
 
