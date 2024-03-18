@@ -78,7 +78,7 @@ class ParkingController(Node):
 
         K_p_drive = 2
         K_i_drive = 0
-        K_d_drive = 0
+        K_d_drive = 0.2
 
         # YOUR CODE HERE
         # Use relative position and your control law to set drive_cmd
