@@ -52,7 +52,7 @@ class ParkingController(Node):
         current_angle = np.arctan(self.relative_y/self.relative_x)
         self.current_angle = current_angle
         # self.get_logger().info('Angle: ' + str(current_angle))
-        current_distance_from_cone = np.sqrt((self.relative_x)**2+(self.relative_x)**2)
+        current_distance_from_cone = np.sqrt((self.relative_x)**2+(self.relative_y)**2)
         self.current_distance_from_cone = current_distance_from_cone
         current_distance_error = current_distance_from_cone - self.parking_distance
 
@@ -82,8 +82,8 @@ class ParkingController(Node):
             if self.relative_x < self.parking_distance:
                 velocity = min(-0.05, -abs(current_distance_from_cone))
             # car is close to the cone, but is not facing the cone at the right angle
-            elif abs(current_angle) > angle_buffer and current_distance_error < distance_buffer: 
-                self.velocity = velocity = min(-0.05, -abs(current_distance_from_cone))
+            elif abs(current_angle) > (angle_buffer+0.05) and current_distance_error < (distance_buffer+0.05): 
+                velocity = min(-0.05, -abs(current_distance_from_cone))
             # car exits backing mode
             else:
                 self.drive_mode = "forward"
@@ -91,7 +91,7 @@ class ParkingController(Node):
         if self.drive_mode == "forward":
             # car's is facing the cone and is at the desired distance away, plus or minus a buffer
             if abs(current_angle) < angle_buffer and abs(current_distance_error) < distance_buffer: # buffer 
-                self.velocity = 0.0
+                velocity = 0.0
             # steering according to PID control based on the angle, velocity based on the distance error and steering angle
             else:
                 steering_angle = flip_controls * K_p * (current_angle)
