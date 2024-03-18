@@ -22,7 +22,12 @@ def image_print(img, bbox1=None, bbox2=None, winname="Image", destroy=True):
 
 	bbox1 and bbox2 should be 2-item tuples. (x1, y1) and (x2, y2)
 	"""
-	cv2.namedWindow(winname)        # Create a named window
+	cv2.namedWindow(winname, cv2.WINDOW_NORMAL)        # Create a named window
+
+	# Set the window size to the image's size
+	h, w = img.shape[:2]  # Assuming img is a color image (BGR)
+	cv2.resizeWindow(winname, w, h)
+
 	cv2.moveWindow(winname, 40,30)  # Move it to (40,30)
 	if bbox1 is not None:
 		cv2.rectangle(img, bbox1, bbox2, (0,0,255), 1)
@@ -30,6 +35,9 @@ def image_print(img, bbox1=None, bbox2=None, winname="Image", destroy=True):
 	cv2.waitKey()
 	if destroy:
 		cv2.destroyAllWindows()
+	else:
+        # Update the window with new size even when not destroying it
+		cv2.resizeWindow(winname, w, h)
 
 def cd_sift_ransac(img, template, debug=False, return_runtime=False):
 	"""
@@ -166,7 +174,7 @@ def cd_template_matching(img, template, debug=False, return_runtime=False):
 	# Remember to resize the bounding box using the highest scoring scale
 	# x1,y1 pixel will be accurate, but x2,y2 needs to be correctly scaled
 	endX = startX + int(w)
-	endY = startY + int(h)
+	endY = startY + int(h)  # w and h area already that of rescaled image
 
 	bbox = ((startX, startY), (endX, endY))
 
@@ -189,6 +197,7 @@ def cd_template_matching(img, template, debug=False, return_runtime=False):
 # cd_sift_ransac(cv2.imread(f"test_images_citgo/citgo{pic_num}.jpeg"), cv2.imread("test_images_citgo/citgo_template.png"), debug=True)
 
 # pic_num = np.random.randint(1, 10)
+# pic_num=5
 # bbox, runtime = cd_template_matching(cv2.imread("test_images_localization/basement_fixed.png"), cv2.imread(f"test_images_localization/map_scrap{pic_num	+1}.png"), debug=True)
 
 
