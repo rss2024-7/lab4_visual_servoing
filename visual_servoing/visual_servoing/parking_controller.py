@@ -25,7 +25,8 @@ class ParkingController(Node):
         self.create_subscription(ConeLocation, "/relative_cone", 
             self.relative_cone_callback, 1)
 
-        self.parking_distance = 0.75 # meters; try playing with this number!
+        self.bumper_distance = 0.13
+        self.parking_distance = 0.75 + self.bumper_distance # meters; try playing with this number!
         self.relative_x = 0
         self.relative_y = 0
 
@@ -100,7 +101,7 @@ class ParkingController(Node):
 
         #################################
         drive_cmd.drive.steering_angle = min(0.34, steering_angle) if steering_angle > 0 else max(-0.34, steering_angle)
-        drive_cmd.drive.speed = min(1.0, velocity) if velocity < 0 else max(-1.0, velocity)
+        drive_cmd.drive.speed = min(1.0, velocity) if velocity > 0 else max(-1.0, velocity)
         self.drive_pub.publish(drive_cmd)
         self.error_publisher()
 
