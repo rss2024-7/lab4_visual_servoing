@@ -11,6 +11,7 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from ackermann_msgs.msg import AckermannDriveStamped
 from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
 from vs_msgs.msg import ConeLocation, ConeLocationPixel
 
 #The following collection of pixel locations and corresponding relative
@@ -20,25 +21,31 @@ from vs_msgs.msg import ConeLocation, ConeLocationPixel
 # see README.md for coordinate frame description
 
 ######################################################
-## DUMMY POINTS -- ENTER YOUR MEASUREMENTS HERE
-PTS_IMAGE_PLANE = [[-1, -1],
-                   [-1, -1],
-                   [-1, -1],
-                   [-1, -1]] # dummy points
+## ENTER YOUR MEASUREMENTS HERE
+PTS_IMAGE_PLANE = [[275, 174],
+                   [341, 166],
+                   [106, 203],
+                   [602, 257],
+                   [159, 343],
+                   [191, 244],
+                   [322, 193]] 
 ######################################################
 
-# PTS_GROUND_PLANE units are in inches
+# PTS_GROUND_PLANE units are in meters
 # car looks along positive x axis with positive y axis to left
 
 ######################################################
-## DUMMY POINTS -- ENTER YOUR MEASUREMENTS HERE
-PTS_GROUND_PLANE = [[-1, -1],
-                    [-1, -1],
-                    [-1, -1],
-                    [-1, -1]] # dummy points
+## ENTER YOUR MEASUREMENTS HERE
+PTS_GROUND_PLANE = [[1.78, 0.06],
+                    [2.255, -0.13],
+                    [1.12, 0.75],
+                    [0.52, -0.41],
+                    [0.285, 0.215],
+                    [0.57, 0.26],
+                    [1.035, 0]] 
 ######################################################
 
-METERS_PER_INCH = 0.0254
+# METERS_PER_INCH = 0.0254
 
 
 class HomographyTransformer(Node):
@@ -55,7 +62,7 @@ class HomographyTransformer(Node):
         #Initialize data into a homography matrix
 
         np_pts_ground = np.array(PTS_GROUND_PLANE)
-        np_pts_ground = np_pts_ground * METERS_PER_INCH
+        np_pts_ground = np_pts_ground # * METERS_PER_INCH
         np_pts_ground = np.float32(np_pts_ground[:, np.newaxis, :])
 
         np_pts_image = np.array(PTS_IMAGE_PLANE)
@@ -65,6 +72,16 @@ class HomographyTransformer(Node):
         self.h, err = cv2.findHomography(np_pts_image, np_pts_ground)
 
         self.get_logger().info("Homography Transformer Initialized")
+
+        self.rqt_sub = self.create_subscription(Point, "/zed/zed_node/rgb/image_rect_color_mouse_left", self.image_click_callback, 1)
+        self.pixel_pub = self.create_publisher(ConeLocationPixel, "/relative_cone_px", 10)
+
+    def image_click_callback(self, msg):
+        pixel_msg = ConeLocationPixel()
+        pixel_msg.u = msg.x
+        pixel_msg.v = msg.y
+        self.pixel_pub.publish(pixel_msg)
+
 
     def cone_detection_callback(self, msg):
         #Extract information from message
@@ -80,6 +97,10 @@ class HomographyTransformer(Node):
         relative_xy_msg.y_pos = y
 
         self.cone_pub.publish(relative_xy_msg)
+
+        # self.get_logger().info('x: "%s"' % x)
+        # self.get_logger().info('y: "%s"' % y)
+        self.draw_marker(x, y, '/laser')
 
 
     def transformUvToXy(self, u, v):
