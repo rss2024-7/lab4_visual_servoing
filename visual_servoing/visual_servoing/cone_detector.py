@@ -60,6 +60,15 @@ class ConeDetector(Node):
 
         image = cv2.rectangle(image, ul, br, (0, 255, 0), 2)
 
+        debug_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
+
+
+        pub = ConeLocationPixel()
+        pub.u = float(u)
+        pub.v = float(v)
+
+        # self.get_logger().info('u: "%s"' % u)
+        # self.get_logger().info('v: "%s"' % v)
         
         self.debug_pub.publish(debug_msg)
         self.cone_pub.publish(pub)

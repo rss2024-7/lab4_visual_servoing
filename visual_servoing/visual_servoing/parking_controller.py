@@ -27,9 +27,7 @@ class ParkingController(Node):
         
         self.TURN_RADIUS = 1  # meters; this is actually measured/calculated
 
-
         self.PARKING_DISTANCE = 0.75 # meters; try playing with this number!
-
         self.relative_x = 0
         self.relative_y = 0
 
@@ -95,39 +93,42 @@ class ParkingController(Node):
 
         # YOUR CODE HERE
         # Use relative position and your control law to set drive_cmd
-
         # also probably need to check self.relative_y
         
         # if the cone is anywhere behind the car, or if the car is too close to the cone, switch to "backing" mode
-        if self.relative_x < 0 or current_distance_error < 0:
+        if (self.relative_x < 0 and current_distance_error > 0) or (current_distance_error < 0 and current_angle > -1.57 and current_angle < 1.57):
             self.drive_mode = "backing"
+            flip_controls = -1
+        else:
+            self.drive_mode = "forward"
+            flip_controls = 1
+
+        self.get_logger().info('Current Mode: ' + str(self.drive_mode))
+
+        # stop condition: car is facing the cone and is at the desired distance away, plus or minus a buffer
+        if abs(current_angle) < angle_buffer and abs(current_distance_error) < distance_buffer: # buffer 
+                velocity = 0.0
 
         # car drives backwards (velocity < 0) in "backing" mode
-        if self.drive_mode == "backing":
-            # car is within(ish) the circle, too close to the cone
-            if self.relative_x < self.parking_distance:
-                velocity = min(-0.05, -abs(current_distance_from_cone))
-            # car is close to the cone, but is not facing the cone at the right angle
-            elif abs(current_angle) > (angle_buffer+0.006) and current_distance_error < (distance_buffer+0.006): 
-                velocity = min(-0.05, -abs(current_distance_from_cone))
-            # car exits backing mode
-            else:
-                self.drive_mode = "forward"
-        
-        if self.drive_mode == "forward":
-            # car's is facing the cone and is at the desired distance away, plus or minus a buffer
-            if abs(current_angle) < angle_buffer and abs(current_distance_error) < distance_buffer: # buffer 
-                velocity = 0.0
+        elif self.drive_mode == "backing":
+            #                                           car is close to the cone, but is not facing the cone at the right angle
+            # if (self.relative_x < self.TURN_RADIUS) or (abs(current_angle) > (angle_buffer+0.05) and current_distance_error < (distance_buffer+0.05)):
+            steering_angle = flip_controls * K_p_steer * (current_angle)
+            steering_angle = self.bound_variable(steering_angle, -0.34, 0.34)
+            velocity = 1.5 * (-K_p_drive*abs(current_distance_error) - K_d_drive*abs(current_distance_error - self.previous_distance_error)) - 0.4
+            
+        elif self.drive_mode == "forward":
             # steering according to PID control based on the angle, velocity based on the distance error and steering angle
-            else:
-                steering_angle = flip_controls * K_p * (current_angle)
-                steering_angle = min(0.34, steering_angle) if steering_angle > 0 else max(-0.34, steering_angle)
-                velocity = flip_controls * (0.5 * abs(steering_angle) + current_distance_error * 0.25)
+            steering_angle = flip_controls * K_p_steer * (current_angle)
+            steering_angle = self.bound_variable(steering_angle, -0.34, 0.34)
+            velocity = K_p_drive*abs(current_distance_error**1.5) + K_d_drive*abs(current_distance_error - self.previous_distance_error) + 0.4
 
-        #################################
+        ################################# 
         drive_cmd.drive.steering_angle = min(0.34, steering_angle) if steering_angle > 0 else max(-0.34, steering_angle)
-        drive_cmd.drive.speed = min(1.0, velocity) if velocity > 0 else max(-1.0, velocity)
-
+        max_speed = 1.0
+        drive_cmd.drive.speed = min(max_speed, velocity) if velocity > 0 else max(-max_speed, velocity)
+        self.get_logger().info('Angle: ' + str(drive_cmd.drive.steering_angle))
+        self.get_logger().info('Speed: ' + str(drive_cmd.drive.speed)) 
         self.drive_pub.publish(drive_cmd)
         self.error_publisher()
 
