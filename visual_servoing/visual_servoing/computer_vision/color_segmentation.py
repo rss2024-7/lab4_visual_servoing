@@ -33,6 +33,7 @@ def cd_color_segmentation(img, template):
 				(x1, y1) is the top left of the bbox and (x2, y2) is the bottom right of the bbox
 	"""
 	########## YOUR CODE STARTS HERE ##########
+	min_area = 225
 
 	# mask = np.zeros(img.shape[:2], dtype="uint8")
 	# cv2.rectangle(mask, (267, 0), (200, img.shape[1]), 255, -1)
@@ -47,11 +48,13 @@ def cd_color_segmentation(img, template):
 	grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	# blur_gs = cv2.blur(hsv_img, (3,3))
 
+
 	# Blur image before masking
 	blur = cv2.GaussianBlur(hsv_img, (3,3), 0) #change size of kernel as needed
 
 	# Mask to keep what we want
 	## Orange HSV, tighten ranges after gaussian blur
+
 	orange_lower = np.array([0, 90, 130]) # best so far 10, 90, 130 | best 0, 90, 130
 	orange_upper = np.array([20, 255, 255]) # best for far 25, 255, 255
 	# gauss_lower = np.array([10, 90, 140])
@@ -63,6 +66,7 @@ def cd_color_segmentation(img, template):
 	dark2_lower = np.array([170, 90, 130])
 	dark2_upper = np.array([179, 255, 255])
 
+
 	## Gray Mask
 	# gray_lower = np.array([0, 0, 50]) # best so far 10, 90, 140
 	# gray_upper = np.array([0, 0, 70])
@@ -73,7 +77,9 @@ def cd_color_segmentation(img, template):
 	# Implement brown mask
 	brown_lower = np.array([18, 100, 138]) # 20, 100, 138
 	brown_upper = np.array([30, 222, 165]) # 30, 145/222, 153/172
+
 	brown_mask = cv2.inRange(hsv_img, brown_lower, brown_upper)
+
 	# kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
 	# opening = cv2.morphologyEx(brown_mask, cv2.MORPH_OPEN, kernel)
 	
@@ -82,10 +88,12 @@ def cd_color_segmentation(img, template):
 	# mask2 = cv2.inRange(hsv_img, brown_upper, orange_upper)
 	# full_mask = mask1 | mask2 | dark_mask
 	
+
 	mask = cv2.inRange(hsv_img, orange_lower, orange_upper)
 	dark_mask = cv2.inRange(hsv_img, dark_or_lower, dark_or_upper)
 	dark_mask2 = cv2.inRange(hsv_img, dark2_lower, dark2_upper)
 	full_mask = mask | dark_mask2
+
 	
 	# Intersect full_mask + gray_mask
 	# gray_and_bgr = cv2.bitwise_and(full_mask, gray_mask)
